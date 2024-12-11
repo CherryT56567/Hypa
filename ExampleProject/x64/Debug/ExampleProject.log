@@ -1,1 +1,3 @@
-﻿  ExampleProject.vcxproj -> D:\Hypa\x64\Debug\ExampleProject.exe
+﻿  ExampleProject.cpp
+D:\Hypa\ExampleProject\ExampleProject.cpp(56,18): warning C4305: '+=': truncation from 'double' to 'float'
+  ExampleProject.vcxproj -> D:\Hypa\x64\Debug\ExampleProject.exe

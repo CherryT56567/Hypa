@@ -1,18 +1,5 @@
 #include "OpenGL.h"
 
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\n\0";
-
 namespace Hypa {
 	OpenGL::OpenGL(std::shared_ptr<Window> window, std::shared_ptr<EventSystem> Events) {
 		name = "OpenGL";
@@ -28,69 +15,8 @@ namespace Hypa {
 			exit(-1);
 		}
 
-        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-        glCompileShader(vertexShader);
-        // check for shader compile errors
-        int success;
-        char infoLog[512];
-        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-        }
-        // fragment shader
-        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragmentShader);
-        // check for shader compile errors
-        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-        }
-        // link shaders
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        // check for linking errors
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-        }
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-
-        // set up vertex data (and buffer(s)) and configure vertex attributes
-        // ------------------------------------------------------------------
-        float vertices[] = {
-            -0.5f, -0.5f, 0.0f, // left
-             0.5f, -0.5f, 0.0f, // right
-             0.0f,  0.5f, 0.0f  // top
-        };
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-        glBindVertexArray(VAO);
-
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-        // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-        glBindVertexArray(0);
-        
+        CreateShader("Default", "vertex.glsl", "fragment.glsl");
+		ChangeShader("Default");
 	}
 
 	void OpenGL::OnDetach() {
@@ -104,11 +30,83 @@ namespace Hypa {
         // draw our first triangle
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	}
 
 	void OpenGL::CreateShader(std::string name, std::string VertShaderPath, std::string FragShaderPath) {
+        // Read vertex shader
+        std::ifstream vertexFile(VertShaderPath);
+        std::stringstream vertexStream;
+        if (vertexFile.is_open()) {
+            vertexStream << vertexFile.rdbuf();
+            vertexFile.close();
+        }
+        else {
+            std::cerr << "ERROR::SHADER::VERTEX::FILE_NOT_FOUND: " << VertShaderPath << std::endl;
+            return;
+        }
+        std::string vertexCode = vertexStream.str();
+        const char* vertexShaderSource = vertexCode.c_str();
 
+        // Read fragment shader
+        std::ifstream fragmentFile(FragShaderPath);
+        std::stringstream fragmentStream;
+        if (fragmentFile.is_open()) {
+            fragmentStream << fragmentFile.rdbuf();
+            fragmentFile.close();
+        }
+        else {
+            std::cerr << "ERROR::SHADER::FRAGMENT::FILE_NOT_FOUND: " << FragShaderPath << std::endl;
+            return;
+        }
+        std::string fragmentCode = fragmentStream.str();
+        const char* fragmentShaderSource = fragmentCode.c_str();
+
+        // Compile vertex shader
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+        glCompileShader(vertexShader);
+        int success;
+        char infoLog[512];
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            return;
+        }
+
+        // Compile fragment shader
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragmentShader);
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            return;
+        }
+
+        // Link shaders into a program
+        unsigned int shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            return;
+        }
+
+        // Cleanup shaders as they are no longer needed
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        // Initialize UBO
+        UniformBufferObject ubo = {}; // Initialize as required
+
+        // Store shaders in the map
+        Shaders[name] = std::make_tuple(shaderProgram, shaderProgram, ubo);
 	}
 
 	void OpenGL::RemoveShader(std::string name) {
@@ -116,15 +114,44 @@ namespace Hypa {
 	}
 
 	void OpenGL::ChangeShader(std::string name) {
-
+        currentShader = name;
 	}
 
 	std::string OpenGL::GetCurrentShaderName() {
-		return "";
+		return currentShader;
 	}
 
 	void OpenGL::DrawVerts(std::vector<Vertex> vertices, std::vector<uint16_t> indices) {
+        unsigned int VAO, VBO, EBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
 
+        // Bind the Vertex Array Object
+        glBindVertexArray(VAO);
+
+        // Bind and set vertex buffer
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+
+        // Bind and set element buffer
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+        // Set vertex attribute pointers
+        // Attribute 0: Position (vec3)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, pos));
+        glEnableVertexAttribArray(0);
+
+        // Attribute 1: Color (vec3)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
+        glEnableVertexAttribArray(1);
+
+        // Unbind the VBO (not EBO)
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Unbind the VAO (optional)
+        glBindVertexArray(0);
 	}
 
 	void OpenGL::AddUniform(std::string name, UniformBufferObject& ubo) {

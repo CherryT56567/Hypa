@@ -8,6 +8,8 @@
 #define GLFW_EXPOSE_NATIVE_WGL
 #include <GLFW/glfw3native.h>
 #include <GLFW/glfw3.h>
+#include <fstream>
+#include <sstream>
 
 #pragma comment (lib, "opengl32.lib")
 
@@ -36,6 +38,8 @@ namespace Hypa {
 		std::string name;
 		std::shared_ptr<Window> pWindow;
 		std::shared_ptr<EventSystem> pEvents;
+		std::map<std::string, std::tuple<unsigned int, unsigned int, UniformBufferObject>> Shaders;
+		std::string currentShader = "none";
 		unsigned int shaderProgram;
 		unsigned int VBO, VAO;
 	};
