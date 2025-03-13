@@ -9,7 +9,7 @@ namespace Hypa {
 		OpenGLAPI = std::make_shared<OpenGL>(window, Events);
 		rAPIsystem->AddAPI(VulkanAPI);
 		rAPIsystem->AddAPI(OpenGLAPI);
-		rAPIsystem->SwitchRenderingAPI("OpenGL");
+		rAPIsystem->SwitchRenderingAPI("Vulkan");
 		Layerdispatch = std::make_shared<LayerDispatch>();
 		Rendering3d = std::make_shared<Rendering3D>(window, rAPIsystem);
 		Layerdispatch->AddLayer(Rendering3d);
